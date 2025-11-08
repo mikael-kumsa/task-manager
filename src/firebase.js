@@ -3,12 +3,12 @@ import {getAuth} from 'firebase/auth' //for user authentication
 import { getFirestore } from 'firebase/firestore' //for db op
 
 const firebaseConfig = {
-  apiKey: "AIzaSyB9UsNFAY6lgEZa3DWfBFAtr5fFeBdmS_A", //to identify my project
-  authDomain: "task-manager-app-87a13.firebaseapp.com", // for auth.
-  projectId: "task-manager-app-87a13", // for firestore db 
-  storageBucket: "task-manager-app-87a13.firebasestorage.app", 
-  messagingSenderId: "243535462632", //for push notification
-  appId: "1:243535462632:web:99655676dbe5d3afa9895d"
+  apiKey: API_KEY, //to identify my project
+  authDomain: authdomain.firebaseapp.com, // for auth.
+  projectId: PROJECT_ID, // for firestore db 
+  storageBucket: STORAGE_BUCKET, 
+  messagingSenderId: SENDER_ID, //for push notification
+  appId: APP_ID
 };
 
 // Initialize firebase
