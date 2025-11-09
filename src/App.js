@@ -4,6 +4,7 @@ import { useAuthState } from 'react-firebase-hooks/auth'; //to get the realtime 
 import './App.css';
 import Login from './components/Login';
 import TaskManager from './components/TaskManager';
+import Footer from './components/Footer';
 
 function App(){
   //track if user is logged in or not
@@ -24,8 +25,11 @@ function App(){
   }
 
   //show the dashboard if user is logged in
-  return <TaskManager user={user}/>;
-
+  return (
+  <>
+  <TaskManager user={user}/>
+  <Footer/></>
+  )
 }
 
 export default App;

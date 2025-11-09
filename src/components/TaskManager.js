@@ -494,7 +494,7 @@ function TaskManager({ user }) {
           <div className="loading-spinner">Switching boards...</div>
         </div>
       )}
-
+      
       <header className="task-manager-header">
         <div className="header-content">
           <h1>{user.email.toUpperCase().split('@')[0]}'s Task Manager</h1>

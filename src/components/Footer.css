@@ -1,0 +1,14 @@
+footer {
+    /* position: fixed; */
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    background: -webkit-linear-gradient(to left, #00dade33, #fc00ff);
+    background: linear-gradient(to left, #0068ded5, #fc00ff);
+    color: white;
+    text-align: center;
+    margin-top: auto;
+    padding-top: 0.5rem;
+    padding-bottom: 15px;
+    /*padding: 8px;*/
+}
