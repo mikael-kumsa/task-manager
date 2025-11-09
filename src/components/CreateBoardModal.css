@@ -18,7 +18,8 @@
   background: white;
   border-radius: 8px;
   width: 100%;
-  max-width: 400px;
+  max-width: 500px;
+  padding: 1rem;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   animation: modalSlideIn 0.2s ease-out;
 }
