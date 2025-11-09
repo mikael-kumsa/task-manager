@@ -2,10 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { auth, db } from '../firebase';
 import { signOut } from 'firebase/auth';
-import { 
-  collection, 
-  doc, 
-  getDocs, 
+import {
+  collection,
+  query,
+  where,
+  doc,
+  getDocs,
   setDoc,
   deleteDoc
 } from 'firebase/firestore';
@@ -58,12 +60,12 @@ const SortableTask = ({ task, onEdit, onDelete }) => {
       <div className="drag-handle" {...attributes} {...listeners}>
         ⋮⋮
       </div>
-      
+
       <div className="task-content">
         {task.content}
       </div>
       <div className="task-actions">
-        <button 
+        <button
           onClick={(e) => {
             e.stopPropagation();
             onEdit(task);
@@ -73,7 +75,7 @@ const SortableTask = ({ task, onEdit, onDelete }) => {
         >
           ✏️
         </button>
-        <button 
+        <button
           onClick={(e) => {
             e.stopPropagation();
             if (window.confirm('Delete this task?')) {
@@ -116,10 +118,10 @@ const Column = ({ column, tasks, onAddTask, onEditTask, onDeleteTask }) => {
       className={`column ${isOver ? 'drag-over' : ''}`}
     >
       <h3 {...listeners}>
-        {column.title} 
+        {column.title}
         <span className="task-count">({column.taskIds.length})</span>
       </h3>
-      
+
       <SortableContext items={columnTasks.map(task => task.id)} strategy={verticalListSortingStrategy}>
         <div className="tasks-list">
           {columnTasks.map((task) => (
@@ -132,8 +134,8 @@ const Column = ({ column, tasks, onAddTask, onEditTask, onDeleteTask }) => {
           ))}
         </div>
       </SortableContext>
-      
-      <button 
+
+      <button
         onClick={() => onAddTask(column)}
         className="add-task-btn"
       >
@@ -180,7 +182,7 @@ function TaskManager({ user }) {
 
   // Update boards state when current board changes
   const updateBoardsState = (updatedBoard) => {
-    setBoards(prev => prev.map(board => 
+    setBoards(prev => prev.map(board =>
       board.id === updatedBoard.id ? updatedBoard : board
     ));
   };
@@ -188,39 +190,37 @@ function TaskManager({ user }) {
   // Load all boards for the user
   useEffect(() => {
     const loadBoards = async () => {
+      if (!user || !user.uid) {
+        console.warn('No user available yet, skipping loadBoards.');
+        setLoading(false);
+        return;
+      }
+
       try {
+        // Query for only boards that belong to the signed-in user
         const boardsRef = collection(db, 'boards');
-        const querySnapshot = await getDocs(boardsRef);
+        const q = query(boardsRef, where('userId', '==', user.uid));
+        const querySnapshot = await getDocs(q);
         const userBoards = [];
-        
-        querySnapshot.forEach((doc) => {
-          const boardData = doc.data();
-          if (boardData.userId === user.uid) {
-            userBoards.push({ 
-              id: doc.id, 
-              ...boardData,
-              // Ensure tasks and columns exist
-              tasks: boardData.tasks || {},
-              columns: boardData.columns || [
-                { id: 'todo', title: 'To Do', taskIds: [] },
-                { id: 'inprogress', title: 'In Progress', taskIds: [] },
-                { id: 'stuck', title: 'Stuck', taskIds: [] },
-                { id: 'done', title: 'Done', taskIds: [] }
-              ]
-            });
-          }
+
+        querySnapshot.forEach((docSnap) => {
+          const boardData = docSnap.data();
+          userBoards.push({
+            id: docSnap.id,
+            ...boardData,
+            tasks: boardData.tasks || {},
+            columns: boardData.columns || [
+              { id: 'todo', title: 'To Do', taskIds: [] },
+              { id: 'inprogress', title: 'In Progress', taskIds: [] },
+              { id: 'stuck', title: 'Stuck', taskIds: [] },
+              { id: 'done', title: 'Done', taskIds: [] }
+            ]
+          });
         });
 
-        console.log('Loaded boards:', userBoards.map(b => ({ 
-          title: b.title, 
-          taskCount: Object.keys(b.tasks || {}).length 
-        })));
-
+        console.log('Loaded boards:', userBoards.map(b => ({ title: b.title, taskCount: Object.keys(b.tasks || {}).length })));
         setBoards(userBoards);
-        
-        if (userBoards.length > 0) {
-          setCurrentBoard(userBoards[0]);
-        }
+        if (userBoards.length > 0) setCurrentBoard(userBoards[0]);
       } catch (error) {
         console.error('Error loading boards:', error);
       } finally {
@@ -229,7 +229,8 @@ function TaskManager({ user }) {
     };
 
     loadBoards();
-  }, [user.uid]);
+  }, [user.uid]); // keep your existing dependency
+
 
   // Auto-save when board changes
   useEffect(() => {
@@ -239,7 +240,7 @@ function TaskManager({ user }) {
         // Also update the boards state to keep it in sync
         updateBoardsState(currentBoard);
       }, 500); // Save 0.5 second after changes
-      
+
       return () => clearTimeout(autoSave);
     }
   }, [currentBoard, loading, switchingBoard]);
@@ -260,7 +261,7 @@ function TaskManager({ user }) {
         },
         {
           id: 'inprogress',
-          title: 'In Progress', 
+          title: 'In Progress',
           taskIds: []
         },
         {
@@ -278,7 +279,7 @@ function TaskManager({ user }) {
       createdAt: new Date().toISOString(),
       userId: user.uid
     };
-    
+
     setBoards(prev => [...prev, newBoard]);
     setCurrentBoard(newBoard);
     await saveBoardToFirebase(newBoard);
@@ -286,17 +287,17 @@ function TaskManager({ user }) {
 
   const handleSwitchBoard = async (board) => {
     if (currentBoard?.id === board.id) return; // Already on this board
-    
+
     setSwitchingBoard(true);
     console.log('Switching from:', currentBoard?.title, 'to:', board.title);
-    
+
     // First, ensure current board is saved
     if (currentBoard) {
       console.log('Saving current board before switch...');
       await saveBoardToFirebase(currentBoard);
       updateBoardsState(currentBoard);
     }
-    
+
     // Then switch to the new board
     setCurrentBoard(board);
     setSwitchingBoard(false);
@@ -308,11 +309,11 @@ function TaskManager({ user }) {
       try {
         // Delete from Firebase
         await deleteDoc(doc(db, 'boards', boardId));
-        
+
         // Update local state
         const updatedBoards = boards.filter(board => board.id !== boardId);
         setBoards(updatedBoards);
-        
+
         // Switch to another board if available
         if (updatedBoards.length > 0) {
           setCurrentBoard(updatedBoards[0]);
@@ -327,7 +328,7 @@ function TaskManager({ user }) {
 
   const handleAddTask = async (column, content) => {
     if (!content) return;
-    
+
     const newTask = {
       id: Date.now().toString(),
       content: content.trim(),
@@ -341,8 +342,8 @@ function TaskManager({ user }) {
         ...currentBoard.tasks,
         [newTask.id]: newTask
       },
-      columns: currentBoard.columns.map(col => 
-        col.id === column.id 
+      columns: currentBoard.columns.map(col =>
+        col.id === column.id
           ? { ...col, taskIds: [...col.taskIds, newTask.id] }
           : col
       )
@@ -355,7 +356,7 @@ function TaskManager({ user }) {
 
   const handleEditTask = async (taskId, newContent) => {
     if (!newContent.trim()) return;
-    
+
     const updatedBoard = {
       ...currentBoard,
       tasks: {
@@ -374,22 +375,22 @@ function TaskManager({ user }) {
   };
 
   const handleDeleteTask = async (taskId) => {
-    const taskColumn = currentBoard.columns.find(column => 
+    const taskColumn = currentBoard.columns.find(column =>
       column.taskIds.includes(taskId)
     );
-    
+
     if (!taskColumn) return;
 
     const updatedBoard = {
       ...currentBoard,
       tasks: { ...currentBoard.tasks },
-      columns: currentBoard.columns.map(column => 
+      columns: currentBoard.columns.map(column =>
         column.id === taskColumn.id
           ? { ...column, taskIds: column.taskIds.filter(id => id !== taskId) }
           : column
       )
     };
-    
+
     delete updatedBoard.tasks[taskId];
 
     setCurrentBoard(updatedBoard);
@@ -412,10 +413,10 @@ function TaskManager({ user }) {
     const overId = over.id;
 
     // Find source and destination columns
-    const sourceColumn = currentBoard.columns.find(col => 
+    const sourceColumn = currentBoard.columns.find(col =>
       col.taskIds.includes(activeId)
     );
-    const overColumn = currentBoard.columns.find(col => 
+    const overColumn = currentBoard.columns.find(col =>
       col.id === overId
     );
 
@@ -428,7 +429,7 @@ function TaskManager({ user }) {
 
       if (oldIndex !== newIndex && newIndex >= 0) {
         const newTaskIds = arrayMove(sourceColumn.taskIds, oldIndex, newIndex);
-        
+
         const updatedBoard = {
           ...currentBoard,
           columns: currentBoard.columns.map(col =>
@@ -493,7 +494,7 @@ function TaskManager({ user }) {
           <div className="loading-spinner">Switching boards...</div>
         </div>
       )}
-      
+
       <header className="task-manager-header">
         <div className="header-content">
           <h1>{user.email.toUpperCase().split('@')[0]}'s Task Manager</h1>
@@ -517,7 +518,7 @@ function TaskManager({ user }) {
               disabled={switchingBoard}
             >
               {board.title}
-              <button 
+              <button
                 onClick={(e) => {
                   e.stopPropagation();
                   handleDeleteBoard(board.id);
@@ -530,7 +531,7 @@ function TaskManager({ user }) {
               </button>
             </button>
           ))}
-          <button 
+          <button
             onClick={() => setIsCreateBoardModalOpen(true)}
             className="add-board-btn"
             disabled={switchingBoard}
@@ -545,7 +546,7 @@ function TaskManager({ user }) {
           {currentBoard ? (
             <div className="board-view">
               <h2>{currentBoard.title}</h2>
-              
+
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
@@ -584,7 +585,7 @@ function TaskManager({ user }) {
             <div className="empty-state">
               <h2>No boards yet</h2>
               <p>Create your first board to get started!</p>
-              <button 
+              <button
                 onClick={() => setIsCreateBoardModalOpen(true)}
                 className="create-board-btn"
               >
